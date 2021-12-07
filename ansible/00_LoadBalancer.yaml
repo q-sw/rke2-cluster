@@ -1,0 +1,79 @@
+---
+- hosts: lb
+  become: yes
+  tasks:
+    - name: "Install HAProxy"
+      apt:
+        name: "haproxy"
+        state: present
+        update_cache: yes
+
+    - name: "Change HAProxy folder permission"
+      file: 
+        path: /etc/haproxy
+        owner: haproxy
+        group: haproxy
+        state: directory
+
+    - name: "Configure HAPRoxy Frontend for RKE2"
+      blockinfile:
+        path: /etc/haproxy/haproxy.cfg
+        marker: "# {mark} Frontend RKE managed by ansible"
+        block: |
+              frontend rke2_frontend
+                bind *:{{RKE2_PORT}}
+                mode tcp
+                option tcplog
+                default_backend rke2_backend
+
+    - name: "Configure HAProxy Backend for RKE2"
+      blockinfile:
+        path: /etc/haproxy/haproxy.cfg
+        marker:  "# {mark} Backend RKE managed by ansible" 
+        block: |
+              backend rke2_backend
+                balance roundrobin
+                mode tcp
+                server {{master_init[0].name}} {{master_init[0].ip}}:{{RKE2_PORT}} check
+
+    - name: "Configure HAPRoxy Frontend for APISERVER"
+      blockinfile:
+        path: /etc/haproxy/haproxy.cfg
+        marker: "# {mark} Frontend APISERVER managed by ansible"
+        block: |
+              frontend apiserver_frontend
+                bind *:6443
+                mode tcp
+                option tcplog
+                default_backend apiserver_backend
+
+    - name: "Configure HAProxy Backend for APISERVER"
+      blockinfile:
+        path: /etc/haproxy/haproxy.cfg
+        marker:  "# {mark} Backend APISERVER managed by ansible" 
+        block: |
+              backend apiserver_backend
+                balance roundrobin
+                mode tcp
+                server {{master_init[0].name}} {{master_init[0].ip}}:6443 check
+    
+    - name: "Configure HAPROXY Frontend for RKE2"
+      lineinfile:
+        path: /etc/haproxy/haproxy.cfg
+        line: "  server {{item.name}} {{item.ip}}:{{RKE2_PORT}} check" 
+        insertbefore: '^# END Backend RKE managed by ansible'
+      with_items:
+        - "{{ additionnal_master }}"
+
+    - name: "Configure HAProxy Backend for APISERVER"
+      lineinfile:
+        path: /etc/haproxy/haproxy.cfg
+        line: "  server {{item.name}} {{item.ip}}:6443 check"
+        insertbefore: '^# END Backend APISERVER managed by ansible'
+      with_items:
+        - "{{ additionnal_master }}"
+
+    - name: "Apply HAProxy configuration"
+      service:
+        name: haproxy
+        state: restarted

@@ -1,0 +1,62 @@
+---
+- hosts: master_init
+  become: yes
+  tasks:
+    - name: "Push RKE2 config"
+      template:
+        src: rke2_config.yaml
+        dest: "{{rancher_config_path}}/config.yaml"
+        mode: 0644
+        owner: root
+        group: root
+      register: push_config
+
+    - name: "Exec RKE2 script"
+      shell:
+        cmd: |
+          curl -sfL {{url_script_rke2}} | sh  -s - --config {{rancher_config_path}}/config.yaml
+      register: rke2_exec
+      failed_when: rke2_exec.rc != 0
+      when: push_config is changed
+
+    - name: "Start service RKE2"
+      service:
+        name: rke2-server.service
+        state: started
+        enabled: yes
+      when: push_config is changed
+    
+    - name: "wait master0 is up"
+      wait_for:
+        timeout: 120
+      when: push_config is changed
+
+- hosts: additionnal_master
+  become: yes
+  serial: 
+    - 1
+  tasks:
+    - name: "Push RKE2 config"
+      template:
+        src: rke2_config_add_master.yaml
+        dest: "{{rancher_config_path}}/config.yaml"
+        mode: 0644
+        owner: root
+        group: root
+      register: push_config
+      when: additionnal_master | length > 1
+
+    - name: "Exec RKE2 script"
+      shell:
+        cmd: |
+          curl -sfL {{url_script_rke2}} | sh  -s - --config {{rancher_config_path}}/config.yaml
+      register: rke2_exec
+      failed_when: rke2_exec.rc != 0
+      when: push_config is changed and additionnal_master | length > 1
+    
+    - name: "Start service RKE2"
+      service:
+        name: rke2-server.service
+        state: started
+        enabled: yes
+      when: push_config is changed and additionnal_master | length > 1

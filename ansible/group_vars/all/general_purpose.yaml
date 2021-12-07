@@ -1,0 +1,29 @@
+url_script_rke2: https://get.rke2.io
+RKE2_PORT: 9345
+
+rancher_config_path: /etc/rancher/rke2
+kubernetes_fqdn: "my-kubernetes.local"
+
+
+rke_data_dir: "/var/lib/rancher/rke2"
+cluster_cidr: "10.42.0.0/16"
+service_cidr: "10.43.0.0/16"
+service_node_port_range: "30000-32767"
+cluster_dns: "10.43.0.10"
+cluser_domain: "cluster.local"
+
+etcd_snapshot_dir: "/var/lib/rancher/rke2/db/snapshots"
+
+rke2_token: "c56bssw8gfrlslxlmtcdjrxc52hsdkfj5mgc2bg2l85w7kjbbtzbj5"
+cis_profile: ""
+system_environnement:
+  - path: "/etc/profile"
+    line: "export PATH=/var/lib/rancher/rke2/bin:$PATH"
+  - path: "/etc/profile"
+    line: "export KUBECONFIG=/etc/rancher/rke2/rke2.yaml"
+  - path: "/root/.bashrc"
+    line: "source <(kubectl completion bash)"
+  - path: "/root/.bashrc"
+    line: "alias k=kubectl"
+  - path: "/root/.bashrc"
+    line: "complete -F __start_kubectl k"

@@ -1,0 +1,45 @@
+---
+- hosts: master
+  become: yes
+  tasks: 
+    - name: "Update /etc/hosts with kubernetes fqdn"
+      lineinfile:
+        path: /etc/hosts
+        line: "{{ item.ip }}    {{ kubernetes_fqdn }}"
+      with_items:
+        - "{{ lb }}"
+
+    - name: "Create Rancher tree"
+      file:
+        path: "{{ rancher_config_path }}"
+        state: directory
+        mode: 0755
+        owner: root
+        group: root
+
+    - name: "Setup protect kernel panic"
+      template:
+        src: protect_kernel_panic.conf
+        dest: /etc/sysctl.d/protect_kernel_panic.conf
+      register: kernel_panic
+
+    - name: "apply sysctl kubelet config"
+      shell:
+        cmd: sysctl -p /etc/sysctl.d/protect_kernel_panic.conf
+      register: sysctl_cmd
+      failed_when: "sysctl_cmd.rc != 0"
+      when: kernel_panic is changed
+
+
+    - name: "Push crictl config"
+      template:
+        src: crictl_config.yaml
+        dest: "/etc/crictl.yaml"
+        mode: 0644
+        owner: root
+        group: root
+  
+    - name: "Create ETCD USER"
+      user:
+        name: etcd
+        state: present

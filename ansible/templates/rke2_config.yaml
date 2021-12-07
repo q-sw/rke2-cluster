@@ -1,0 +1,36 @@
+tls-san:
+  - {{kubernetes_fqdn}}
+
+data-dir: "{{rke_data_dir}}"
+cluster-cidr: "{{cluster_cidr}}"
+service-cidr: "{{service_cidr}}"
+service-node-port-range: "{{service_node_port_range}}"
+cluster-dns: "{{cluster_dns}}"
+cluster-domain: "{{cluser_domain}}"
+
+token: {{rke2_token}}
+node-name: {{inventory_hostname}}
+
+# kube-apiserver-arg:
+#   audit-log-path: "/var/log/apiserver/audit.log"
+#   audit-log-maxage: 30
+#   audit-log-maxbackup: 10
+#   audit-log-maxsize: 100
+
+etcd-expose-metrics: true
+etcd-snapshot-retention: 5
+etcd-snapshot-schedule-cron: "0 */5 * * *"
+etcd-snapshot-dir: "{{etcd_snapshot_dir}}"
+  
+{%if (cis_profile is defined) and (cis_profile != "") %}
+profile: "{{cis_profile}}"
+{% endif %}
+protect-kernel-defaults: true
+cni: "calico"
+disable-kube-proxy: false
+disable-scheduler: false
+disable-cloud-controller: false
+
+disable: 
+  - rke2-ingress-nginx
+

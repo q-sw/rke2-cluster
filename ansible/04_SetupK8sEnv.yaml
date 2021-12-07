@@ -1,0 +1,19 @@
+---
+- hosts: master
+  become: yes
+  tasks:
+    - name: "Setup k8s system env"
+      lineinfile:
+        path: "{{ item.path }}"
+        line: "{{ item.line }}"
+      with_items:
+        - "{{system_environnement}}"
+
+- hosts: master0
+  become: yes
+  tasks:
+    - name: "Add k8s labels on worker"
+      shell:
+        cmd: "{{rke_data_dir}}/bin/kubectl --kubeconfig {{rancher_config_path}}/rke2.yaml label nodes {{item.name}} node-role.kubernetes.io/worker=true --overwrite"
+      with_items:
+        - "{{worker}}"

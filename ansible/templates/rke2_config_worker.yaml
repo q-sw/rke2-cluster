@@ -1,0 +1,5 @@
+server: https://{{kubernetes_fqdn}}:{{RKE2_PORT}}
+token: {{rke2_token}}
+profile: "cis-1.6"
+protect-kernel-defaults: true
+node-name: {{inventory_hostname}}
