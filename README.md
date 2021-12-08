@@ -150,7 +150,22 @@ lb:
 ```
 
 *En plus de créer le fichier d'inventaire, Terraform manage aussi un fichier de variable ansible dérivant l'infrastruture. La génération de fichier est géré par le template [infrastructure.tpl](terraform/templates/infrastructure.tpl)*  
-*Le fichier créé se trouve dans [ansible/group_vars/all](ansible/group_vars/all)*
+*Le fichier créé se trouve dans [ansible/group_vars/all](ansible/group_vars/all)*  *Exemple du fichier généré:*
+```
+master_init:
+  - name: "master0"
+    ip: "yy.yy.yy.yy"
+additionnal_master:
+  - name: "master0"
+    ip: "yy.yy.yy.yy"
+worker:
+%{ for info in worker ~}
+  - name: "worker0"
+    ip: "yy.yy.yy.yy"
+lb:
+  - name: "lb0"
+    ip: "yy.yy.yy.yy"
+```
 
 ## Déploiment de l'infrastructure
 ### Etape 1: Configurer ses identifiants AWS
