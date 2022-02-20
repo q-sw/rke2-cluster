@@ -15,108 +15,56 @@ provider "aws" {
   region = var.cloud_region
 }
 
-resource "aws_network_interface" "lb_int" {
-  count = var.lb_nb
-  subnet_id   = var.subnet_id
-  private_ips = ["${join(".", slice(var.subnet_cidr, 0, 3))}.${var.lb_net_part+count.index}"]
-  security_groups = [var.security_group_id]
+module "rke2-cluster"{
+  source = "github.com/q-sw/terraform-modules-aws/k8s-infra"
 
-  tags = {
-    Name = format("lb_interface_%s", count.index)
-  }
+  # Cloud environnement variables
+cloud_region           = "eu-west-3"
+aws_ami_id             = "ami-06d79c60d7454e2af"
+ssh_key_name           = "aws_perso"
+security_group_id      = "sg-0d7e46957e04dc12a"
+subnet_id              = "subnet-fb0da0b6"
+subnet_cidr			   = ["172","31","32","0","/20"]
+# Load balancer variables
+lb_instance_flavor     = "t2.small"
+lb_nb				   = 1
+lb_net_part			   = 10
+# Master variables
+master_instance_flavor = "t2.medium"
+master_nb              = 1
+master_net_part		   = 20
+# Worker variables
+worker_instance_flavor = "t2.medium"
+worker_nb              = 1
+worker_net_part		   = 30
+# Project variable
+project_tags		   = {
+	project_name = "RKE2_CLUSTER",
+	auto_shutdown = "true"
+}
 }
 
-resource "aws_instance" "lb" {
-  count                  = var.lb_nb
-  ami                    = var.aws_ami_id
-  instance_type          = var.lb_instance_flavor
-  key_name               = var.ssh_key_name
-  network_interface {
-    network_interface_id = element(aws_network_interface.lb_int.*.id, count.index)
-    device_index         = 0
-  }
-  root_block_device {
-    volume_type = "gp2"
-    volume_size = "10"
-  }
-  tags = merge({Name=format("lb%s", count.index)}, var.project_tags)
-}
 
-resource "aws_network_interface" "master_int" {
-  count       = var.master_nb
-  subnet_id   = var.subnet_id
-  private_ips = ["${join(".", slice(var.subnet_cidr, 0, 3))}.${var.master_net_part+count.index}"]
-  security_groups = [var.security_group_id]
+// resource "local_file" "ansible_inventory" {
+//   content = templatefile("templates/inventory.tpl",
+//     {
+//       loadbalancer = aws_instance.lb
+//       master = aws_instance.master
+//       additionnal_master = length(aws_instance.master)== 1 ? aws_instance.master : slice(aws_instance.master, 1, length(aws_instance.master))
+//       worker = aws_instance.worker
+//     }
+//   )
+//   filename = "../ansible/inventory.yaml"
+// }
 
-  tags = {
-    Name = format("master_interface_%s", count.index)
-  }
-}
-
-resource "aws_instance" "master" {
-  count                  = var.master_nb
-  ami                    = var.aws_ami_id
-  instance_type          = var.master_instance_flavor
-  key_name               = var.ssh_key_name
-  network_interface {
-    network_interface_id = element(aws_network_interface.master_int.*.id, count.index)
-    device_index         = 0
-  }
-  root_block_device {
-    volume_type = "gp2"
-    volume_size = "20"
-  }
-  tags = merge({Name=format("master%s", count.index)}, var.project_tags)
-
-}
-
-resource "aws_network_interface" "worker_int" {
-  count       = var.master_nb
-  subnet_id   = var.subnet_id
-  private_ips = ["${join(".", slice(var.subnet_cidr, 0, 3))}.${var.worker_net_part+count.index}"]
-  security_groups = [var.security_group_id]
-
-  tags = {
-    Name = format("worker_interface_%s", count.index)
-  }
-}
-
-resource "aws_instance" "worker" {
-  count                  = var.worker_nb
-  ami                    = var.aws_ami_id
-  instance_type          = var.worker_instance_flavor
-  key_name               = var.ssh_key_name
-  network_interface {
-    network_interface_id = element(aws_network_interface.worker_int.*.id, count.index)
-    device_index         = 0
-  }
-  root_block_device {
-    volume_type = "gp2"
-    volume_size = "20"
-  }
-  tags = merge({Name=format("worker%s", count.index)}, var.project_tags)
-}
-
-resource "local_file" "ansible_inventory" {
-  content = templatefile("templates/inventory.tpl",
-    {
-      loadbalancer = aws_instance.lb
-      master = aws_instance.master
-      additionnal_master = length(aws_instance.master)== 1 ? aws_instance.master : slice(aws_instance.master, 1, length(aws_instance.master))
-      worker = aws_instance.worker
-    }
-  )
-  filename = "../ansible/inventory.yaml"
-}
-
-resource "local_file" "ansible_infrastructure_vars" {
-  content = templatefile("templates/infrastructure.tpl",
-    {
-      loadbalancer = aws_instance.lb
-      master = aws_instance.master
-      additionnal_master = length(aws_instance.master)== 1 ? aws_instance.master : slice(aws_instance.master, 1, length(aws_instance.master))
-      worker = aws_instance.worker
-    }
-  )
-  filename = "../ansible/group_vars/all/infrastructure.yaml"
-}
+// resource "local_file" "ansible_infrastructure_vars" {
+//   content = templatefile("templates/infrastructure.tpl",
+//     {
+//       loadbalancer = aws_instance.lb
+//       master = aws_instance.master
+//       additionnal_master = length(aws_instance.master)== 1 ? aws_instance.master : slice(aws_instance.master, 1, length(aws_instance.master))
+//       worker = aws_instance.worker
+//     }
+//   )
+//   filename = "../ansible/group_vars/all/infrastructure.yaml"
+// }
